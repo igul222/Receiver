@@ -8,12 +8,15 @@
 
 #import "CoreBluetoothController.h"
 #import "BluetoothServices.h"
+#import "CBUUID+StringExtraction.h"
 
 @interface CoreBluetoothController ()
 
 @property (nonatomic, strong) NSTimer *readRSSITimer;
 @property (nonatomic, strong) NSMutableArray *rssiArray;
 @property (nonatomic, assign) int rssiArrayIndex;
+
+@property (nonatomic, strong) NSMutableDictionary *uuids;
 
 @end
 
@@ -23,10 +26,12 @@
 	self = [super init];
     
 	if(self) {
-        
-		self.manager = [[CBCentralManager alloc] initWithDelegate:self queue:nil];
+
         _rssiArrayIndex = 0;
         _isConnected = NO;
+        _uuids = [[NSMutableDictionary alloc] init];
+		self.manager = [[CBCentralManager alloc] initWithDelegate:self queue:nil];
+
 	}
     
     return self;
@@ -82,7 +87,7 @@
     NSLog(@"Peripheral Connected");
     _isConnected = YES;
     
-    [self.manager stopScan];
+//    [self.manager stopScan];
     peripheral.delegate = self;
     
     // Search only for services that match our UUID
@@ -91,9 +96,9 @@
 
 - (void)centralManager:(CBCentralManager *)central didDisconnectPeripheral:(CBPeripheral *)peripheral error:(NSError *)error
 {
-    id tempDelegate = self.delegate;
-    if ([tempDelegate respondsToSelector:@selector(didUpdateRSSI:)])
-        [self.delegate didUpdateRSSI:-100];
+//    id tempDelegate = self.delegate;
+//    if ([tempDelegate respondsToSelector:@selector(didUpdateRSSI:)])
+//        [self.delegate didUpdateRSSI:-100 UUID:@"0"];
     
     _isConnected = NO;
 }
@@ -109,7 +114,7 @@
         
     // Loop through the newly filled peripheral.services array, just in case there's more than one.
     for (CBService *service in peripheral.services) {
-        [peripheral discoverCharacteristics:@[[CBUUID UUIDWithString:CHARACTERISTIC_UUID]] forService:service];
+        [peripheral discoverCharacteristics:nil forService:service];
     }
 }
 
@@ -121,15 +126,17 @@
     }
     
     for (CBCharacteristic *characteristic in service.characteristics) {
+    
+        NSString *characteristicUUID = [[characteristic UUID] representativeString];
+        NSString *peripheralUUID = (__bridge_transfer NSString *)CFUUIDCreateString(NULL, peripheral.UUID);
+        _uuids[peripheralUUID] = characteristicUUID;
         
-        if ([characteristic.UUID isEqual:[CBUUID UUIDWithString:CHARACTERISTIC_UUID]]) {
-            
-            id tempDelegate = self.delegate;
-            if ([tempDelegate respondsToSelector:@selector(didConnectToBeacon)])    
-                [self.delegate didConnectToBeacon];
-            
-            [self.pairedPeripheral setNotifyValue:YES forCharacteristic:characteristic];
-        }
+        id tempDelegate = self.delegate;
+        if ([tempDelegate respondsToSelector:@selector(didConnectToBeacon)])    
+            [self.delegate didConnectToBeacon];
+        
+        [self.pairedPeripheral setNotifyValue:YES forCharacteristic:characteristic];
+
     }
 }
 
@@ -137,9 +144,15 @@
 {
     // int RSSIvalue = [peripheral.RSSI intValue];
     
-    if (!_rssiArray.count)
+    if(!peripheral.RSSI) {
+        NSLog(@"WARNING: peripheral.RSSI is nil");
+        return;
+    }
+    
+    if (!_rssiArray.count) {
         _rssiArray = [[NSMutableArray alloc] initWithArray: @[peripheral.RSSI, peripheral.RSSI, peripheral.RSSI, peripheral.RSSI, peripheral.RSSI]];
-
+    }
+    
     [_rssiArray replaceObjectAtIndex:_rssiArrayIndex withObject:peripheral.RSSI];
     _rssiArrayIndex ++;
     
@@ -149,8 +162,10 @@
     if (self.delegate) {
        
         id tempDelegate = self.delegate;
-        if ([tempDelegate respondsToSelector:@selector(didUpdateRSSI:)])
-            [self.delegate didUpdateRSSI:[self averageFromLastRSSI]];
+        if ([tempDelegate respondsToSelector:@selector(didUpdateRSSI:UUID:)]) {
+            NSString *peripheralUUID = (__bridge_transfer NSString *)CFUUIDCreateString(NULL, peripheral.UUID);
+            [self.delegate didUpdateRSSI:[self averageFromLastRSSI] UUID:_uuids[peripheralUUID]];
+        }
     }
 }
 
@@ -163,7 +178,7 @@
 
 - (void)startReadingRSSI
 {
-    _readRSSITimer = [NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(readPeripheralRSSI) userInfo:nil repeats:YES];
+    _readRSSITimer = [NSTimer scheduledTimerWithTimeInterval:0.1 target:self selector:@selector(readPeripheralRSSI) userInfo:nil repeats:YES];
     [_readRSSITimer fire];
 }
 

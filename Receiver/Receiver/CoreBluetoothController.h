@@ -14,7 +14,7 @@
 - (void)didFindBeacon;
 - (void)didConnectToBeacon;
 - (void)didDetectInteraction;
-- (void)didUpdateRSSI:(int)RSSI;
+- (void)didUpdateRSSI:(int)RSSI UUID:(NSString *)UUID;
 
 - (void)didConnectToListener;
 @end
