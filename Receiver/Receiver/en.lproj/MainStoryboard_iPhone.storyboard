@@ -28,6 +28,9 @@
                             <constraint firstItem="S5Y-hA-5Sv" firstAttribute="top" secondItem="3" secondAttribute="top" constant="260" id="zSJ-Bg-iw3"/>
                         </constraints>
                     </view>
+                    <connections>
+                        <outlet property="stationary" destination="S5Y-hA-5Sv" id="u12-LN-KRV"/>
+                    </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="4" sceneMemberID="firstResponder"/>
             </objects>

@@ -10,7 +10,7 @@
 #import "Broadcaster.h"
 #import <socket.IO/SocketIO.h>
 
-@interface ViewController () <CoreBluetoothDelegate>
+@interface ViewController () <CoreBluetoothDelegate, SocketIODelegate>
 
 @property (nonatomic, strong) CoreBluetoothController *bluetoothController;
 @property (nonatomic, strong) Broadcaster *broadcaster;
@@ -36,10 +36,13 @@
     
     _broadcaster = [[Broadcaster alloc] init];
     [_broadcaster startBroadcasting];
+    
+    [self switchValueChanged:_stationary];
 }
 
 - (void)didUpdateRSSI:(int)RSSI UUID:(NSString *)UUID {
     NSLog(@"RSSI: %i for UUID: %@", RSSI, UUID);
+    
     [_socketIO sendEvent:@"updatePairwiseDistance" withData:@{@"d1": [[[UIDevice currentDevice] identifierForVendor] UUIDString], @"d2": UUID, @"signal": @(RSSI)}];
 }
 

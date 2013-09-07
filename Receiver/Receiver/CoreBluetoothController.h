@@ -24,7 +24,7 @@
     __unsafe_unretained id <CoreBluetoothDelegate> _delegate;
 }
 
-@property (nonatomic, strong) CBPeripheral *pairedPeripheral;
+@property (nonatomic, strong) NSMutableArray *pairedPeripherals;
 @property (assign, nonatomic) id <CoreBluetoothDelegate> delegate;
 @property (nonatomic, strong) CBCentralManager *manager;
 @property (nonatomic, assign) BOOL isConnected;

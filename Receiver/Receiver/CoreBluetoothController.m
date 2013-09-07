@@ -30,6 +30,7 @@
         _rssiArrayIndex = 0;
         _isConnected = NO;
         _uuids = [[NSMutableDictionary alloc] init];
+        _pairedPeripherals = [[NSMutableArray alloc] init];
 		self.manager = [[CBCentralManager alloc] initWithDelegate:self queue:nil];
 
 	}
@@ -78,8 +79,8 @@
 {
     NSLog(@"%@", peripheral);
         
-    self.pairedPeripheral = peripheral;
-    [self.manager connectPeripheral:self.pairedPeripheral options:nil];
+    [self.pairedPeripherals addObject:peripheral];
+    [self.manager connectPeripheral:peripheral options:nil];
 }
 
 - (void)centralManager:(CBCentralManager *)central didConnectPeripheral:(CBPeripheral *)peripheral
@@ -99,8 +100,10 @@
 //    id tempDelegate = self.delegate;
 //    if ([tempDelegate respondsToSelector:@selector(didUpdateRSSI:)])
 //        [self.delegate didUpdateRSSI:-100 UUID:@"0"];
-    
+
     _isConnected = NO;
+    
+    [_pairedPeripherals removeObject:peripheral];
 }
 
 #pragma mark - CBPeripheral delegate methods
@@ -135,7 +138,7 @@
         if ([tempDelegate respondsToSelector:@selector(didConnectToBeacon)])    
             [self.delegate didConnectToBeacon];
         
-        [self.pairedPeripheral setNotifyValue:YES forCharacteristic:characteristic];
+        [peripheral setNotifyValue:YES forCharacteristic:characteristic];
 
     }
 }
@@ -143,6 +146,8 @@
 - (void)peripheralDidUpdateRSSI:(CBPeripheral *)peripheral error:(NSError *)error
 {
     // int RSSIvalue = [peripheral.RSSI intValue];
+    NSLog(@"peripheralDidUpdateRSSI");
+    
     
     if(!peripheral.RSSI) {
         NSLog(@"WARNING: peripheral.RSSI is nil");
@@ -164,7 +169,10 @@
         id tempDelegate = self.delegate;
         if ([tempDelegate respondsToSelector:@selector(didUpdateRSSI:UUID:)]) {
             NSString *peripheralUUID = (__bridge_transfer NSString *)CFUUIDCreateString(NULL, peripheral.UUID);
-            [self.delegate didUpdateRSSI:[self averageFromLastRSSI] UUID:_uuids[peripheralUUID]];
+            
+            NSString *UUID = _uuids[peripheralUUID];
+            if(UUID)
+                [self.delegate didUpdateRSSI:[self averageFromLastRSSI] UUID:UUID];
         }
     }
 }
@@ -178,7 +186,7 @@
 
 - (void)startReadingRSSI
 {
-    _readRSSITimer = [NSTimer scheduledTimerWithTimeInterval:0.1 target:self selector:@selector(readPeripheralRSSI) userInfo:nil repeats:YES];
+    _readRSSITimer = [NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(readPeripheralRSSI) userInfo:nil repeats:YES];
     [_readRSSITimer fire];
 }
 
@@ -190,7 +198,8 @@
 
 - (void)readPeripheralRSSI
 {
-    [self.pairedPeripheral readRSSI];
+    for(CBPeripheral *p in _pairedPeripherals)
+        [p readRSSI];
 }
 
 - (int)averageFromLastRSSI

@@ -12,5 +12,6 @@
 #import "CoreBluetoothController.h"
 
 @interface ViewController : UIViewController
+@property(nonatomic, weak) IBOutlet UISwitch *stationary;
 
 @end
